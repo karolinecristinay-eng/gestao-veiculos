@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gestão de Estoque de Veículos</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            color: #333;
+        }
+
+        header {
+            background: linear-gradient(135deg, #1a3a5c, #2563eb);
+            color: white;
+            padding: 18px 32px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        header span.icon { font-size: 2rem; }
+
+        .container {
+            max-width: 1200px;
+            margin: 32px auto;
+            padding: 0 16px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card h2 {
+            font-size: 1.1rem;
+            color: #1a3a5c;
+            margin-bottom: 18px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 14px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 9px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: border-color 0.2s;
+            background: #fafafa;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #2563eb;
+            background: white;
+        }
+
+        .btn {
+            padding: 9px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn:active { transform: translateY(0); }
+
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-success { background: #16a34a; color: white; }
+        .btn-warning { background: #d97706; color: white; }
+        .btn-danger  { background: #dc2626; color: white; }
+        .btn-secondary { background: #6b7280; color: white; }
+
+        .filter-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .filter-row .form-group { min-width: 160px; }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+            z-index: 9999;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s, transform 0.3s;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast.success { background: #16a34a; }
+        .toast.error   { background: #dc2626; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+        }
+
+        thead th {
+            background: #1a3a5c;
+            color: white;
+            padding: 11px 14px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        tbody tr { transition: background 0.15s; }
+        tbody tr:hover { background: #f0f4ff; }
+        tbody tr:nth-child(even) { background: #f9fafb; }
+        tbody tr:nth-child(even):hover { background: #e8eeff; }
+
+        tbody td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-disponivel  { background: #dcfce7; color: #166534; }
+        .badge-vendido     { background: #fee2e2; color: #991b1b; }
+        .badge-reservado   { background: #fef3c7; color: #92400e; }
+        .badge-manutencao  { background: #e0e7ff; color: #3730a3; }
+
+        .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: white;
+            border-radius: 10px;
+            padding: 28px;
+            min-width: 340px;
+            max-width: 420px;
+            width: 90%;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+
+        .modal h3 {
+            color: #1a3a5c;
+            margin-bottom: 18px;
+            font-size: 1rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+            justify-content: flex-end;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #9ca3af;
+            font-size: 0.95rem;
+        }
+
+        .empty-state .icon { font-size: 3rem; margin-bottom: 10px; }
+
+        .stats {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 14px 20px;
+            flex: 1;
+            min-width: 130px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+
+        .stat-card .value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #2563eb;
+        }
+
+        .stat-card .label {
+            font-size: 0.75rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <span class="icon">🚗</span>
+    <h1>Gestão de Estoque de Veículos</h1>
+</header>
+
+<div class="container">
+
+    <div class="stats" id="statsContainer">
+        <div class="stat-card"><div class="value" id="statTotal">0</div><div class="label">Total</div></div>
+        <div class="stat-card"><div class="value" id="statDisponivel" style="color:#16a34a">0</div><div class="label">Disponíveis</div></div>
+        <div class="stat-card"><div class="value" id="statVendido" style="color:#dc2626">0</div><div class="label">Vendidos</div></div>
+        <div class="stat-card"><div class="value" id="statReservado" style="color:#d97706">0</div><div class="label">Reservados</div></div>
+        <div class="stat-card"><div class="value" id="statManutencao" style="color:#4f46e5">0</div><div class="label">Manutenção</div></div>
+    </div>
+
+    <div class="card">
+        <h2>Cadastrar Novo Veículo</h2>
+        <form id="formCadastro" onsubmit="cadastrar(event)">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Marca *</label>
+                    <input type="text" id="marca" placeholder="Ex: Toyota" required />
+                </div>
+                <div class="form-group">
+                    <label>Modelo *</label>
+                    <input type="text" id="modelo" placeholder="Ex: Corolla" required />
+                </div>
+                <div class="form-group">
+                    <label>Ano *</label>
+                    <input type="number" id="ano" placeholder="Ex: 2023" min="1886" max="2030" required />
+                </div>
+                <div class="form-group">
+                    <label>Cor *</label>
+                    <input type="text" id="cor" placeholder="Ex: Prata" required />
+                </div>
+                <div class="form-group">
+                    <label>Preço (R$) *</label>
+                    <input type="number" id="preco" placeholder="Ex: 85000" min="1" step="0.01" required />
+                </div>
+                <div class="form-group">
+                    <label>Quilometragem *</label>
+                    <input type="number" id="quilometragem" placeholder="Ex: 12000" min="0" required />
+                </div>
+                <div class="form-group">
+                    <label>Status *</label>
+                    <select id="status" required>
+                        <option value="">Selecione...</option>
+                        <option value="DISPONIVEL">Disponível</option>
+                        <option value="RESERVADO">Reservado</option>
+                        <option value="MANUTENCAO">Manutenção</option>
+                        <option value="VENDIDO">Vendido</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top:18px; display:flex; gap:10px;">
+                <button type="submit" class="btn btn-primary">Cadastrar Veículo</button>
+                <button type="button" class="btn btn-secondary" onclick="limparForm()">Limpar</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Filtrar e Listar Veículos</h2>
+        <div class="filter-row">
+            <div class="form-group">
+                <label>Marca</label>
+                <input type="text" id="filtraMarca" placeholder="Ex: Honda" />
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select id="filtraStatus">
+                    <option value="">Todos</option>
+                    <option value="DISPONIVEL">Disponível</option>
+                    <option value="RESERVADO">Reservado</option>
+                    <option value="MANUTENCAO">Manutenção</option>
+                    <option value="VENDIDO">Vendido</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="carregarVeiculos()">Buscar</button>
+            <button class="btn btn-secondary" onclick="limparFiltros()">Limpar Filtros</button>
+        </div>
+        <div style="margin-top: 20px; overflow-x:auto;">
+            <table id="tabelaVeiculos">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Marca</th>
+                        <th>Modelo</th>
+                        <th>Ano</th>
+                        <th>Cor</th>
+                        <th>Preço</th>
+                        <th>Quilometragem</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyVeiculos">
+                    <tr><td colspan="9" class="empty-state"><div class="icon">🔍</div>Carregando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalAtualizar">
+    <div class="modal">
+        <h3>Atualizar Veículo</h3>
+        <input type="hidden" id="editId" />
+        <div class="form-group" style="margin-bottom:12px">
+            <label>Preço (R$)</label>
+            <input type="number" id="editPreco" placeholder="Deixe em branco para manter" min="1" step="0.01" />
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+            <label>Quilometragem</label>
+            <input type="number" id="editQuilometragem" placeholder="Deixe em branco para manter" min="0" />
+        </div>
+        <div class="form-group">
+            <label>Status</label>
+            <select id="editStatus">
+                <option value="">Manter atual</option>
+                <option value="DISPONIVEL">Disponível</option>
+                <option value="RESERVADO">Reservado</option>
+                <option value="MANUTENCAO">Manutenção</option>
+                <option value="VENDIDO">Vendido</option>
+            </select>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+            <button class="btn btn-warning" onclick="salvarAtualizacao()">Salvar</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalConfirmar">
+    <div class="modal">
+        <h3>Confirmar Remoção</h3>
+        <p style="color:#555; margin-bottom:6px;">Tem certeza que deseja remover este veículo?</p>
+        <p style="font-size:0.85rem; color:#9ca3af;">Esta ação não pode ser desfeita.</p>
+        <input type="hidden" id="deleteId" />
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="fecharModalConfirmar()">Cancelar</button>
+            <button class="btn btn-danger" onclick="confirmarRemocao()">Remover</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    const API = '/api/veiculos';
+
+    function showToast(msg, type = 'success') {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = `toast ${type} show`;
+        setTimeout(() => { t.className = 'toast'; }, 3000);
+    }
+
+    function formatMoeda(v) {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+    }
+
+    function formatKm(v) {
+        return new Intl.NumberFormat('pt-BR').format(v) + ' km';
+    }
+
+    function badgeStatus(s) {
+        const map = {
+            DISPONIVEL: ['disponivel', 'Disponível'],
+            VENDIDO:    ['vendido',    'Vendido'],
+            RESERVADO:  ['reservado',  'Reservado'],
+            MANUTENCAO: ['manutencao', 'Manutenção'],
+        };
+        const [cls, label] = map[s] || ['', s];
+        return `<span class="badge badge-${cls}">${label}</span>`;
+    }
+
+    async function carregarVeiculos() {
+        const marca  = document.getElementById('filtraMarca').value.trim();
+        const status = document.getElementById('filtraStatus').value;
+        const params = new URLSearchParams();
+        if (marca)  params.append('marca', marca);
+        if (status) params.append('status', status);
+        const url = params.toString() ? `${API}?${params}` : API;
+
+        try {
+            const res = await fetch(url);
+            const veiculos = await res.json();
+            renderTabela(veiculos);
+            atualizarStats(veiculos);
+        } catch (e) {
+            showToast('Erro ao carregar veículos', 'error');
+        }
+    }
+
+    function atualizarStats(veiculos) {
+        document.getElementById('statTotal').textContent = veiculos.length;
+        document.getElementById('statDisponivel').textContent  = veiculos.filter(v => v.status === 'DISPONIVEL').length;
+        document.getElementById('statVendido').textContent     = veiculos.filter(v => v.status === 'VENDIDO').length;
+        document.getElementById('statReservado').textContent   = veiculos.filter(v => v.status === 'RESERVADO').length;
+        document.getElementById('statManutencao').textContent  = veiculos.filter(v => v.status === 'MANUTENCAO').length;
+    }
+
+    function renderTabela(veiculos) {
+        const tbody = document.getElementById('tbodyVeiculos');
+        if (!veiculos.length) {
+            tbody.innerHTML = `<tr><td colspan="9" class="empty-state"><div class="icon">🚗</div>Nenhum veículo encontrado</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = veiculos.map(v => `
+            <tr>
+                <td>${v.id}</td>
+                <td><strong>${v.marca}</strong></td>
+                <td>${v.modelo}</td>
+                <td>${v.ano}</td>
+                <td>${v.cor}</td>
+                <td>${formatMoeda(v.preco)}</td>
+                <td>${formatKm(v.quilometragem)}</td>
+                <td>${badgeStatus(v.status)}</td>
+                <td>
+                    <div class="actions">
+                        <button class="btn btn-warning" onclick="abrirModalAtualizar(${v.id}, ${v.preco}, ${v.quilometragem}, '${v.status}')">Editar</button>
+                        <button class="btn btn-danger" onclick="abrirModalConfirmar(${v.id})">Remover</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function cadastrar(e) {
+        e.preventDefault();
+        const body = {
+            modelo:        document.getElementById('modelo').value.trim(),
+            marca:         document.getElementById('marca').value.trim(),
+            ano:           parseInt(document.getElementById('ano').value),
+            cor:           document.getElementById('cor').value.trim(),
+            preco:         parseFloat(document.getElementById('preco').value),
+            quilometragem: parseFloat(document.getElementById('quilometragem').value),
+            status:        document.getElementById('status').value,
+        };
+        try {
+            const res = await fetch(API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            if (res.ok) {
+                showToast('Veículo cadastrado com sucesso!');
+                document.getElementById('formCadastro').reset();
+                carregarVeiculos();
+            } else {
+                const err = await res.json();
+                showToast('Erro ao cadastrar: ' + JSON.stringify(err), 'error');
+            }
+        } catch (ex) {
+            showToast('Erro de conexão', 'error');
+        }
+    }
+
+    function limparForm() {
+        document.getElementById('formCadastro').reset();
+    }
+
+    function limparFiltros() {
+        document.getElementById('filtraMarca').value = '';
+        document.getElementById('filtraStatus').value = '';
+        carregarVeiculos();
+    }
+
+    function abrirModalAtualizar(id, preco, km, status) {
+        document.getElementById('editId').value = id;
+        document.getElementById('editPreco').value = preco;
+        document.getElementById('editQuilometragem').value = km;
+        document.getElementById('editStatus').value = status;
+        document.getElementById('modalAtualizar').classList.add('active');
+    }
+
+    function fecharModal() {
+        document.getElementById('modalAtualizar').classList.remove('active');
+    }
+
+    async function salvarAtualizacao() {
+        const id    = document.getElementById('editId').value;
+        const preco = document.getElementById('editPreco').value;
+        const km    = document.getElementById('editQuilometragem').value;
+        const status = document.getElementById('editStatus').value;
+
+        const body = {};
+        if (preco)  body.preco = parseFloat(preco);
+        if (km)     body.quilometragem = parseFloat(km);
+        if (status) body.status = status;
+
+        try {
+            const res = await fetch(`${API}/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            if (res.ok) {
+                showToast('Veículo atualizado com sucesso!');
+                fecharModal();
+                carregarVeiculos();
+            } else {
+                const err = await res.json();
+                showToast('Erro: ' + (err.erro || 'Falha ao atualizar'), 'error');
+            }
+        } catch (ex) {
+            showToast('Erro de conexão', 'error');
+        }
+    }
+
+    function abrirModalConfirmar(id) {
+        document.getElementById('deleteId').value = id;
+        document.getElementById('modalConfirmar').classList.add('active');
+    }
+
+    function fecharModalConfirmar() {
+        document.getElementById('modalConfirmar').classList.remove('active');
+    }
+
+    async function confirmarRemocao() {
+        const id = document.getElementById('deleteId').value;
+        try {
+            const res = await fetch(`${API}/${id}`, { method: 'DELETE' });
+            if (res.status === 204) {
+                showToast('Veículo removido com sucesso!');
+                fecharModalConfirmar();
+                carregarVeiculos();
+            } else {
+                showToast('Veículo não encontrado', 'error');
+            }
+        } catch (ex) {
+            showToast('Erro de conexão', 'error');
+        }
+    }
+
+    document.getElementById('modalAtualizar').addEventListener('click', function(e) {
+        if (e.target === this) fecharModal();
+    });
+    document.getElementById('modalConfirmar').addEventListener('click', function(e) {
+        if (e.target === this) fecharModalConfirmar();
+    });
+
+    carregarVeiculos();
+</script>
+</body>
+</html>
